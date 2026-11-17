@@ -1,0 +1,641 @@
+{
+  "id": null,
+  "uid": "preprod-host-ebs",
+  "title": "PreProd Host and EBS",
+  "tags": [
+    "preprod",
+    "ec2",
+    "ebs"
+  ],
+  "description": "Host pressure and EBS performance on the PreProd instance.",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "timezone": "utc",
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "CPU utilization",
+      "description": "Compare average active CPU with the hottest core, I/O wait, and steal time. A single hot core can limit a replay with spare capacity elsewhere.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "100 * avg by (instance) (sum by (instance, cpu) (rate(node_cpu_seconds_total{job=\"node\",mode=~\"user|system|nice|irq|softirq\"}[$__rate_interval])))",
+          "legendFormat": "Mean used",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "100 * max by (instance) (sum by (instance, cpu) (rate(node_cpu_seconds_total{job=\"node\",mode=~\"user|system|nice|irq|softirq\"}[$__rate_interval])))",
+          "legendFormat": "Hottest core",
+          "range": true,
+          "instant": false,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "100 * avg by (instance) (rate(node_cpu_seconds_total{job=\"node\",mode=\"iowait\"}[$__rate_interval]))",
+          "legendFormat": "I/O wait",
+          "range": true,
+          "instant": false,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "100 * avg by (instance) (rate(node_cpu_seconds_total{job=\"node\",mode=\"steal\"}[$__rate_interval]))",
+          "legendFormat": "Steal",
+          "range": true,
+          "instant": false,
+          "refId": "D"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Available memory and swap used",
+      "description": "Available memory includes reclaimable cache. Correlate declining memory or growing swap with memory pressure.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "node_memory_MemAvailable_bytes{job=\"node\"}",
+          "legendFormat": "Available memory",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "node_memory_SwapTotal_bytes{job=\"node\"} - node_memory_SwapFree_bytes{job=\"node\"}",
+          "legendFormat": "Swap used",
+          "range": true,
+          "instant": false,
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Linux pressure stalls",
+      "description": "Percentage of time at least one task was delayed by CPU, memory, or I/O pressure. Requires the Node Exporter pressure collector and Linux PSI.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "100 * rate(node_pressure_cpu_waiting_seconds_total{job=\"node\"}[$__rate_interval])",
+          "legendFormat": "CPU wait",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "100 * rate(node_pressure_memory_waiting_seconds_total{job=\"node\"}[$__rate_interval])",
+          "legendFormat": "Memory wait",
+          "range": true,
+          "instant": false,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "100 * rate(node_pressure_io_waiting_seconds_total{job=\"node\"}[$__rate_interval])",
+          "legendFormat": "I/O wait",
+          "range": true,
+          "instant": false,
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Free space on root and data mounts",
+      "description": "Available filesystem bytes for unprivileged processes. The archive, indexer and PostgreSQL grow on /srv/midnight. Container logs can also grow on root.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "node_filesystem_avail_bytes{job=\"node\",mountpoint=~\"/|/srv/midnight\"}",
+          "legendFormat": "{{mountpoint}}",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "NVMe completed IOPS",
+      "description": "Read and write operations summed by device. Use the filesystem device and EC2 volume mapping to identify the disk mounted at /srv/midnight.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "iops",
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(node_disk_reads_completed_total{job=\"node\",device=~\"nvme[0-9]+n[0-9]+\"}[$__rate_interval])",
+          "legendFormat": "{{device}} read",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(node_disk_writes_completed_total{job=\"node\",device=~\"nvme[0-9]+n[0-9]+\"}[$__rate_interval])",
+          "legendFormat": "{{device}} write",
+          "range": true,
+          "instant": false,
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "NVMe throughput",
+      "description": "Read and write bytes per second by device. Compare their sum for the data disk with the gp3 provisioned throughput.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(node_disk_read_bytes_total{job=\"node\",device=~\"nvme[0-9]+n[0-9]+\"}[$__rate_interval])",
+          "legendFormat": "{{device}} read",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(node_disk_written_bytes_total{job=\"node\",device=~\"nvme[0-9]+n[0-9]+\"}[$__rate_interval])",
+          "legendFormat": "{{device}} write",
+          "range": true,
+          "instant": false,
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "NVMe average I/O latency",
+      "description": "Read or write time divided by completed operations. A missing sample means no matching operations occurred in the query window.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(1000 * rate(node_disk_read_time_seconds_total{job=\"node\",device=~\"nvme[0-9]+n[0-9]+\"}[$__rate_interval]) / rate(node_disk_reads_completed_total{job=\"node\",device=~\"nvme[0-9]+n[0-9]+\"}[$__rate_interval])) and (rate(node_disk_reads_completed_total{job=\"node\",device=~\"nvme[0-9]+n[0-9]+\"}[$__rate_interval]) > 0)",
+          "legendFormat": "{{device}} read",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(1000 * rate(node_disk_write_time_seconds_total{job=\"node\",device=~\"nvme[0-9]+n[0-9]+\"}[$__rate_interval]) / rate(node_disk_writes_completed_total{job=\"node\",device=~\"nvme[0-9]+n[0-9]+\"}[$__rate_interval])) and (rate(node_disk_writes_completed_total{job=\"node\",device=~\"nvme[0-9]+n[0-9]+\"}[$__rate_interval]) > 0)",
+          "legendFormat": "{{device}} write",
+          "range": true,
+          "instant": false,
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "NVMe average outstanding I/O",
+      "description": "Rate of the weighted I/O duration counter estimates average outstanding I/O. Compare with latency and replay rates over the same interval.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(node_disk_io_time_weighted_seconds_total{job=\"node\",device=~\"nvme[0-9]+n[0-9]+\"}[$__rate_interval])",
+          "legendFormat": "{{device}}",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Free inode percentage",
+      "description": "Check inode availability as well as free bytes on both mounts.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "100 * node_filesystem_files_free{job=\"node\",mountpoint=~\"/|/srv/midnight\"} / node_filesystem_files{job=\"node\",mountpoint=~\"/|/srv/midnight\"}",
+          "legendFormat": "{{mountpoint}}",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Network traffic",
+      "description": "Receive and transmit throughput on non-loopback interfaces. Use the primary ENI alongside peer and progress panels.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(node_network_receive_bytes_total{job=\"node\",device!=\"lo\"}[$__rate_interval])",
+          "legendFormat": "{{device}} receive",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(node_network_transmit_bytes_total{job=\"node\",device!=\"lo\"}[$__rate_interval])",
+          "legendFormat": "{{device}} transmit",
+          "range": true,
+          "instant": false,
+          "refId": "B"
+        }
+      ]
+    }
+  ]
+}

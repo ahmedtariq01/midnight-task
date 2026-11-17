@@ -1,0 +1,79 @@
+{
+  "logs": {
+    "logs_collected": {
+      "journald": {
+        "collect_list": [
+          {
+            "log_group_name": "/midnight/preprod/host",
+            "log_stream_name": "cardano-node",
+            "units": [
+              "cardano-node.service"
+            ],
+            "filters": [
+              {
+                "type": "include",
+                "expression": "(?i)\\b(warn(?:ing)?|error|fatal|panic|failed|started|stopped|ready)\\b"
+              },
+              {
+                "type": "exclude",
+                "expression": "(?i)(postgres(?:ql)?://|password\\s*[=:]|authorization\\s*:|aws_secret_access_key|gh[pousr]_[a-z0-9_]{25,})"
+              }
+            ]
+          },
+          {
+            "log_group_name": "/midnight/preprod/host",
+            "log_stream_name": "cardano-db-sync",
+            "units": [
+              "cardano-db-sync.service"
+            ],
+            "filters": [
+              {
+                "type": "include",
+                "expression": "(?i)\\b(warn(?:ing)?|error|fatal|panic|failed|started|stopped|ready)\\b"
+              },
+              {
+                "type": "exclude",
+                "expression": "(?i)(postgres(?:ql)?://|password\\s*[=:]|authorization\\s*:|aws_secret_access_key|gh[pousr]_[a-z0-9_]{25,})"
+              }
+            ]
+          },
+          {
+            "log_group_name": "/midnight/preprod/host",
+            "log_stream_name": "midnight-node",
+            "units": [
+              "midnight-node.service"
+            ],
+            "filters": [
+              {
+                "type": "include",
+                "expression": "(?i)\\b(warn(?:ing)?|error|fatal|panic|failed|started|stopped|ready)\\b"
+              },
+              {
+                "type": "exclude",
+                "expression": "(?i)(postgres(?:ql)?://|password\\s*[=:]|authorization\\s*:|aws_secret_access_key|gh[pousr]_[a-z0-9_]{25,})"
+              }
+            ]
+          },
+          {
+            "log_group_name": "/midnight/preprod/host",
+            "log_stream_name": "midnight-indexer",
+            "units": [
+              "midnight-indexer.service",
+              "midnight-indexer-log-follow.service"
+            ],
+            "filters": [
+              {
+                "type": "include",
+                "expression": "(?i)\\b(warn(?:ing)?|error|fatal|panic|failed|started|stopped|ready)\\b"
+              },
+              {
+                "type": "exclude",
+                "expression": "(?i)(postgres(?:ql)?://|password\\s*[=:]|authorization\\s*:|aws_secret_access_key|gh[pousr]_[a-z0-9_]{25,})"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

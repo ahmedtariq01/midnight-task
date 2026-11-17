@@ -1,0 +1,11 @@
+apiVersion: 1
+
+datasources:
+  - name: PreProd CloudWatch
+    uid: preprod-cloudwatch
+    type: cloudwatch
+    access: proxy
+    editable: false
+    jsonData:
+      authType: default
+      defaultRegion: us-east-2

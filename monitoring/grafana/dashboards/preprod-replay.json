@@ -1,0 +1,1052 @@
+{
+  "id": null,
+  "uid": "preprod-replay",
+  "title": "PreProd Replay",
+  "tags": [
+    "preprod",
+    "cardano",
+    "midnight",
+    "replay"
+  ],
+  "description": "Cardano and Midnight progress, readiness, and chain agreement.",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "timezone": "utc",
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Midnight metrics",
+      "description": "Prometheus scrape health for the Midnight node. Check the telemetry alert and service journal when down.",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "No data",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Down",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "Up",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "up{job=\"midnight-node\"}",
+          "legendFormat": "Midnight metrics",
+          "range": false,
+          "instant": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Midnight peers",
+      "description": "Connected peers. The existing Prometheus rule triggers below three peers for five minutes.",
+      "type": "stat",
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "substrate_sub_libp2p_peers_count{job=\"midnight-node\",chain=\"midnight_preprod\"}",
+          "legendFormat": "Midnight peers",
+          "range": false,
+          "instant": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Archive backlog",
+      "description": "Peer-observed sync target minus best height. The target is useful for replay progress and can move independently of public finality.",
+      "type": "stat",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "clamp_min(max by (job, instance, chain) (substrate_block_height{job=\"midnight-node\",chain=\"midnight_preprod\",status=\"sync_target\"}) - max by (job, instance, chain) (substrate_block_height{job=\"midnight-node\",chain=\"midnight_preprod\",status=\"best\"}), 0)",
+          "legendFormat": "Archive backlog",
+          "range": false,
+          "instant": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Indexer backlog",
+      "description": "Archive finalized height minus GraphQL height in a successful probe less than three minutes old.",
+      "type": "stat",
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(clamp_min(midnight_ops_indexer_node_finalized_height{job=\"node\"} - midnight_ops_indexer_height{job=\"node\"}, 0)) and on (job, instance) ((midnight_ops_probe_success{job=\"node\",component=\"indexer\"} == 1) and on (job, instance) (time() - midnight_ops_probe_last_success_timestamp_seconds{job=\"node\",component=\"indexer\"} < 180))",
+          "legendFormat": "Indexer backlog",
+          "range": false,
+          "instant": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Archive sync",
+      "description": "The native major-sync flag reflects whether the node reports that it is still replaying.",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "No data",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Following",
+                  "color": "green",
+                  "index": 0
+                },
+                "1": {
+                  "text": "Syncing",
+                  "color": "orange",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "substrate_sub_libp2p_is_major_syncing{job=\"midnight-node\",chain=\"midnight_preprod\"}",
+          "legendFormat": "Archive sync",
+          "range": false,
+          "instant": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Indexer API",
+      "description": "Result from the HTTP liveness probe. The sampler file must have been updated within the last three minutes.",
+      "type": "stat",
+      "gridPos": {
+        "x": 6,
+        "y": 4,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "No data",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Unavailable",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "Live",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "midnight_ops_indexer_live{job=\"node\"} and on (job, instance) (time() - node_textfile_mtime_seconds{job=\"node\",file=~\".*/midnight-replay[.]prom\"} < 180)",
+          "legendFormat": "Indexer API",
+          "range": false,
+          "instant": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Indexer readiness",
+      "description": "HTTP readiness is relative to the local archive. Catching up is expected while indexed height advances. The sampler file must be less than three minutes old.",
+      "type": "stat",
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "No data",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Catching up",
+                  "color": "orange",
+                  "index": 0
+                },
+                "1": {
+                  "text": "Ready",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "midnight_ops_indexer_ready{job=\"node\"} and on (job, instance) (time() - node_textfile_mtime_seconds{job=\"node\",file=~\".*/midnight-replay[.]prom\"} < 180)",
+          "legendFormat": "Indexer readiness",
+          "range": false,
+          "instant": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Indexer hash check",
+      "description": "Compares the indexed hash with the archive hash at that same height. A public comparison is still needed to establish network catch-up.",
+      "type": "stat",
+      "gridPos": {
+        "x": 18,
+        "y": 4,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "No data",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Mismatch",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "Match",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(midnight_ops_indexer_same_height_hash_match{job=\"node\"}) and on (job, instance) ((midnight_ops_probe_success{job=\"node\",component=\"indexer\"} == 1) and on (job, instance) (time() - midnight_ops_probe_last_success_timestamp_seconds{job=\"node\",component=\"indexer\"} < 180))",
+          "legendFormat": "Indexer hash check",
+          "range": false,
+          "instant": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Midnight archive and indexer heights",
+      "description": "Best, finalized, and peer-target heights from native metrics. GraphQL height appears when the indexer probe succeeds.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 14,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "substrate_block_height{job=\"midnight-node\",chain=\"midnight_preprod\",status=\"sync_target\"}",
+          "legendFormat": "Peer target",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "substrate_block_height{job=\"midnight-node\",chain=\"midnight_preprod\",status=\"best\"}",
+          "legendFormat": "Archive best",
+          "range": true,
+          "instant": false,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "substrate_block_height{job=\"midnight-node\",chain=\"midnight_preprod\",status=\"finalized\"}",
+          "legendFormat": "Archive finalized",
+          "range": true,
+          "instant": false,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(midnight_ops_indexer_height{job=\"node\"}) and on (job, instance) ((midnight_ops_probe_success{job=\"node\",component=\"indexer\"} == 1) and on (job, instance) (time() - midnight_ops_probe_last_success_timestamp_seconds{job=\"node\",component=\"indexer\"} < 180))",
+          "legendFormat": "Indexed",
+          "range": true,
+          "instant": false,
+          "refId": "D"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Midnight blocks per second",
+      "description": "Fifteen-minute regression of each block-height gauge. Archive and indexer rates can vary as the replay traverses different block types.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 14,
+        "y": 8,
+        "w": 10,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: blocks/s",
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "deriv(substrate_block_height{job=\"midnight-node\",chain=\"midnight_preprod\",status=\"best\"}[15m])",
+          "legendFormat": "Archive best",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "deriv(substrate_block_height{job=\"midnight-node\",chain=\"midnight_preprod\",status=\"finalized\"}[15m])",
+          "legendFormat": "Archive finalized",
+          "range": true,
+          "instant": false,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(deriv(midnight_ops_indexer_height{job=\"node\"}[15m])) and on (job, instance) ((midnight_ops_probe_success{job=\"node\",component=\"indexer\"} == 1) and on (job, instance) (time() - midnight_ops_probe_last_success_timestamp_seconds{job=\"node\",component=\"indexer\"} < 180))",
+          "legendFormat": "Indexed",
+          "range": true,
+          "instant": false,
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Cardano relay and PostgreSQL heights",
+      "description": "The relay sample and the latest block committed in PostgreSQL. Check the hash and lag together before concluding the database tracks the relay.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 14,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(midnight_ops_cardano_relay_height{job=\"node\"}) and on (job, instance) ((midnight_ops_probe_success{job=\"node\",component=\"cardano\"} == 1) and on (job, instance) (time() - midnight_ops_probe_last_success_timestamp_seconds{job=\"node\",component=\"cardano\"} < 180))",
+          "legendFormat": "Relay",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(midnight_ops_cardano_db_height{job=\"node\"}) and on (job, instance) ((midnight_ops_probe_success{job=\"node\",component=\"cardano\"} == 1) and on (job, instance) (time() - midnight_ops_probe_last_success_timestamp_seconds{job=\"node\",component=\"cardano\"} < 180))",
+          "legendFormat": "DB Sync",
+          "range": true,
+          "instant": false,
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Cardano DB Sync lag",
+      "description": "Blocks between the sampled relay and PostgreSQL tips.",
+      "type": "stat",
+      "gridPos": {
+        "x": 14,
+        "y": 16,
+        "w": 5,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(clamp_min(midnight_ops_cardano_relay_height{job=\"node\"} - midnight_ops_cardano_db_height{job=\"node\"}, 0)) and on (job, instance) ((midnight_ops_probe_success{job=\"node\",component=\"cardano\"} == 1) and on (job, instance) (time() - midnight_ops_probe_last_success_timestamp_seconds{job=\"node\",component=\"cardano\"} < 180))",
+          "legendFormat": "Cardano DB Sync lag",
+          "range": false,
+          "instant": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Cardano tip match",
+      "description": "The probe compared PostgreSQL against the sampled Cardano relay tip.",
+      "type": "stat",
+      "gridPos": {
+        "x": 19,
+        "y": 16,
+        "w": 5,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "No data",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Behind or mismatch",
+                  "color": "orange",
+                  "index": 0
+                },
+                "1": {
+                  "text": "Match",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(midnight_ops_cardano_db_matches_sampled_tip{job=\"node\"}) and on (job, instance) ((midnight_ops_probe_success{job=\"node\",component=\"cardano\"} == 1) and on (job, instance) (time() - midnight_ops_probe_last_success_timestamp_seconds{job=\"node\",component=\"cardano\"} < 180))",
+          "legendFormat": "Cardano tip match",
+          "range": false,
+          "instant": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Probe age",
+      "description": "Seconds since each probe last succeeded and since the sampler last updated its metrics file. If only a component's age rises, inspect its RPC or SQL calls.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 14,
+        "y": 20,
+        "w": 10,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "time() - midnight_ops_probe_last_success_timestamp_seconds{job=\"node\",component=\"cardano\"}",
+          "legendFormat": "Cardano",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "time() - midnight_ops_probe_last_success_timestamp_seconds{job=\"node\",component=\"indexer\"}",
+          "legendFormat": "Indexer",
+          "range": true,
+          "instant": false,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "time() - node_textfile_mtime_seconds{job=\"node\",file=~\".*/midnight-replay[.]prom\"}",
+          "legendFormat": "Sampler file",
+          "range": true,
+          "instant": false,
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Backlog trend",
+      "description": "Falling lines show the archive and indexer closing their respective gaps. Rising lines show the target is advancing faster than the worker.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 14,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "clamp_min(max by (job, instance, chain) (substrate_block_height{job=\"midnight-node\",chain=\"midnight_preprod\",status=\"sync_target\"}) - max by (job, instance, chain) (substrate_block_height{job=\"midnight-node\",chain=\"midnight_preprod\",status=\"best\"}), 0)",
+          "legendFormat": "Archive to peer target",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(clamp_min(midnight_ops_indexer_node_finalized_height{job=\"node\"} - midnight_ops_indexer_height{job=\"node\"}, 0)) and on (job, instance) ((midnight_ops_probe_success{job=\"node\",component=\"indexer\"} == 1) and on (job, instance) (time() - midnight_ops_probe_last_success_timestamp_seconds{job=\"node\",component=\"indexer\"} < 180))",
+          "legendFormat": "Indexer to local finality",
+          "range": true,
+          "instant": false,
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "title": "Endpoint probe success",
+      "description": "One means the probe returned a usable result. A gap means the sampler file is absent or older than three minutes.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 14,
+        "y": 24,
+        "w": 10,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "preprod-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "midnight_ops_probe_success{job=\"node\",component=\"cardano\"} and on (job, instance) (time() - node_textfile_mtime_seconds{job=\"node\",file=~\".*/midnight-replay[.]prom\"} < 180)",
+          "legendFormat": "Cardano",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "preprod-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "midnight_ops_probe_success{job=\"node\",component=\"indexer\"} and on (job, instance) (time() - node_textfile_mtime_seconds{job=\"node\",file=~\".*/midnight-replay[.]prom\"} < 180)",
+          "legendFormat": "Indexer",
+          "range": true,
+          "instant": false,
+          "refId": "B"
+        }
+      ]
+    }
+  ]
+}
