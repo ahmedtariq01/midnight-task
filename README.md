@@ -1,6 +1,6 @@
 # Midnight PreProd DevOps take-home
 
-A single On-Demand EC2 host in AWS Ohio runs Cardano PreProd, Cardano DB Sync, PostgreSQL, the Midnight PreProd archive, and its standalone indexer. The lab simulates Founding Node Operator onboarding using the public PreProd network. Validator registration and production signing require network-operator access.
+A single On-Demand EC2 host in AWS Ohio runs Cardano PreProd, Cardano DB Sync, PostgreSQL, the Midnight PreProd archive, and its standalone indexer. The lab simulates Founding Node Operator onboarding.
 
 ## Assessment at a glance
 
@@ -61,6 +61,14 @@ See the [deployment verification evidence](RUNBOOK.md#repeat-replay-and-public-h
 ## CI and submission evidence
 
 CI passed Terraform validation, lint, security checks, mock plan tests, Prometheus rule tests, and health checker tests. Terraform provisioned the live EC2 lab from its own root. The CloudWatch log group and scoped role policy were created separately and are documented for later Terraform import. The reusable stack workflow's approval-gated AWS apply was skipped. [Live Terraform state notes](infra/ec2/README.md#deployment-and-terraform-review) · [Workflow](.github/workflows/terraform.yml) · [Passing run](https://github.com/ahmedtariq01/midnight-task/actions/runs/44038869277)
+
+## Assumptions
+
+The lab assumes a single EC2 host is sufficient for the chain services and local monitoring, which share a failure domain. The onboarding exercise uses public PreProd access. Validator registration and production signing require network-operator access.
+
+## What I would do differently with more time
+
+Rehearse restoring a verified Cardano DB Sync backup and its matching ledger state on a fresh host. Run health checks and alert delivery from a separate host so an EC2 outage can still trigger a notification. Test key rotation and recovery with an isolated signer before validator registration. [Rebuild and production notes](infra/README.md#rebuild-and-production-changes)
 
 ## References
 
