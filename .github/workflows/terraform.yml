@@ -1,0 +1,109 @@
+name: Stack checks and PreProd deployment
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    name: Terraform checks and mock plan
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.14.0
+          terraform_wrapper: false
+      - uses: terraform-linters/setup-tflint@6ffdbaa3be476b3431f7275c26966ef32ff60337 # v6.3.2
+        with:
+          tflint_version: v0.64.0
+      - name: Format, initialize, and validate
+        run: |
+          terraform -chdir=infra/stack fmt -check -recursive
+          terraform -chdir=infra/stack init -backend=false -input=false -lockfile=readonly
+          terraform -chdir=infra/stack validate
+      - name: Lint Terraform
+        run: tflint --chdir=infra/stack --recursive
+      - name: Scan Terraform security controls
+        run: |
+          python3 -m venv "$RUNNER_TEMP/checkov"
+          "$RUNNER_TEMP/checkov/bin/pip" install --disable-pip-version-check checkov==3.4.5
+          "$RUNNER_TEMP/checkov/bin/checkov" --directory infra/stack --framework terraform \
+            --check CKV_AWS_3,CKV_AWS_8,CKV_AWS_24,CKV_AWS_25,CKV_AWS_79 --compact
+      - name: Test the stack and show the mocked PreProd plan
+        shell: bash
+        run: |
+          terraform -chdir=infra/stack test -no-color -verbose \
+            -var-file=environments/preprod.tfvars.example | tee "$RUNNER_TEMP/preprod-plan.txt"
+          {
+            printf '## Credential-free Terraform plan and tests\n\n```text\n'
+            cat "$RUNNER_TEMP/preprod-plan.txt"
+            printf '\n```\n'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  operations:
+    name: Alerts and health checker tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - name: Test the health checker
+        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
+      - name: Validate and test Prometheus rules
+        run: |
+          image=prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06
+          docker run --rm --volume "$PWD/monitoring:/work:ro" --workdir /work \
+            --entrypoint /bin/promtool "$image" check config prometheus.yml
+          docker run --rm --volume "$PWD/monitoring:/work:ro" --workdir /work \
+            --entrypoint /bin/promtool "$image" test rules alerts.test.yml
+
+  deploy:
+    name: Apply the PreProd outline
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ENABLE_PREPROD_APPLY == 'true'
+    needs: [terraform, operations]
+    runs-on: ubuntu-24.04
+    environment: preprod
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: terraform-preprod
+      cancel-in-progress: false
+    env:
+      AWS_REGION: us-east-2
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.14.0
+          terraform_wrapper: false
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Plan against locked remote state and apply
+        shell: bash
+        working-directory: infra/stack
+        env:
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+          TF_STATE_KEY: ${{ vars.TF_STATE_KEY }}
+        run: |
+          : "${TF_STATE_BUCKET:?Set the PreProd state bucket environment variable}"
+          : "${TF_STATE_KEY:?Set a state key for this outline}"
+          terraform init -input=false -lockfile=readonly \
+            -backend-config="bucket=$TF_STATE_BUCKET" \
+            -backend-config="key=$TF_STATE_KEY" \
+            -backend-config="region=$AWS_REGION" \
+            -backend-config=encrypt=true -backend-config=use_lockfile=true
+          terraform plan -input=false -lock-timeout=5m \
+            -var-file=environments/preprod.tfvars.example -out="$RUNNER_TEMP/preprod.tfplan"
+          terraform apply -input=false -lock-timeout=5m "$RUNNER_TEMP/preprod.tfplan"

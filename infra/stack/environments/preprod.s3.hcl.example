@@ -1,0 +1,3 @@
+bucket = "replace-with-approved-terraform-state-bucket"
+key    = "midnight-stack/preprod/terraform.tfstate"
+region = "us-east-2"

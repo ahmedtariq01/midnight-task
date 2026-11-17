@@ -1,0 +1,7 @@
+environment       = "preview"
+aws_region        = "us-east-2"
+availability_zone = "us-east-2a"
+vpc_cidr          = "10.77.16.0/24"
+subnet_cidr       = "10.77.16.0/26"
+instance_type     = "c6a.2xlarge"
+data_volume_gib   = 250

@@ -1,0 +1,13 @@
+[Unit]
+Description=Mount Midnight stack EBS data disk
+After=systemd-udevd.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=/etc/midnight-stack/storage.env
+TimeoutStartSec=6min
+ExecStart=/usr/local/libexec/midnight-stack-mount ${directories}
+
+[Install]
+WantedBy=multi-user.target

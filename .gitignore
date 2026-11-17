@@ -1,0 +1,18 @@
+# Local AWS credentials and Terraform artifacts
+/credentials
+/credentials.*
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+
+# Local reports, bytecode, and backend settings
+__pycache__/
+*.pyc
+.venv/
+/var/
+/infra/stack/*.s3.hcl

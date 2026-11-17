@@ -1,0 +1,7 @@
+environment       = "preprod"
+aws_region        = "us-east-2"
+availability_zone = "us-east-2a"
+vpc_cidr          = "10.77.17.0/24"
+subnet_cidr       = "10.77.17.0/26"
+instance_type     = "c6a.4xlarge"
+data_volume_gib   = 500

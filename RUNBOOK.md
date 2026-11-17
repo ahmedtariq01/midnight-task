@@ -1,0 +1,136 @@
+# Midnight PreProd bring-up
+
+## AWS host and access
+
+Use the [EC2 Terraform configuration](infra/ec2/README.md) for the Ubuntu 24.04 x86-64 host and its separate 500 GiB EBS volume. Open the host through **EC2 → Connect → In web browser → SSM Session Manager**. The host uses an outbound-only security group.
+
+## Prepare persistent data storage
+
+Bring the [bootstrap scripts](infra/ec2/bootstrap/) into the guest through the approved Session Manager session. Run the storage stage with the EC2 instance ID and EBS volume ID from the Terraform outputs. The storage stage checks the instance identity, matches the volume by NVMe serial and byte size, verifies signatures and mount state, and formats a blank disk once. It writes a UUID mount in `/etc/fstab` and creates the service accounts and data directories on the mounted filesystem.
+
+```bash
+lsblk -o NAME,PATH,SIZE,TYPE,FSTYPE,MOUNTPOINTS,SERIAL
+sudo bash storage-postgres.sh storage "$EC2_INSTANCE_ID" "$EBS_VOLUME_ID"
+findmnt /srv/midnight
+```
+
+## Start the Cardano services
+
+Run the PostgreSQL and relay stages in separate Session Manager shells or transient systemd jobs. They can run concurrently once the mount is ready.
+
+```bash
+sudo bash storage-postgres.sh postgres "$EC2_INSTANCE_ID" "$EBS_VOLUME_ID"
+sudo bash cardano-relay.sh
+```
+
+- PostgreSQL 17 uses its signed PGDG packages and a cluster at `/srv/midnight/postgresql/17/main`. It listens on loopback and the local Unix socket. The `cexplorer` database is owned by the dedicated `dbsync` database role. Its generated local authentication file is `/etc/midnight/dbsync.pgpass` with mode `0600`.
+- Cardano node and CLI `11.0.1` use the release's PreProd configuration and network magic `1`. The bootstrap verifies the Mithril snapshot certificate chain and immutable chain files. It restores the certified blocks and lets the pinned Cardano release rebuild its ledger locally. Relay data goes to `/srv/midnight/cardano/db`, and the socket is `/run/cardano-node/node.socket`. The relay binds to `0.0.0.0:3001` inside the guest, with zero inbound rules on the EC2 security group.
+
+After PostgreSQL accepts the local DB Sync connection and the relay starts, run the DB Sync stage.
+
+```bash
+sudo bash db-sync.sh
+systemctl is-active cardano-node.service postgresql@17-main.service cardano-db-sync.service
+systemctl is-enabled cardano-node.service postgresql.service cardano-db-sync.service
+```
+
+The Cardano DB Sync `13.7.1.0` service reads the relay's socket and writes PostgreSQL rows plus ledger state under `/srv/midnight/db-sync/state`. Its packaged schema is applied on first start. Systemd mount dependencies prevent services from writing state to the root filesystem if the data volume is unavailable.
+
+## Verify indexing
+
+Run the SQL check twice and record the UTC observation time, block number, and slot number. The database should show consecutive observations with an increasing indexed height. These observations establish indexing progress. For the later Midnight startup, compare the database height and block time with the live PreProd relay tip and verify they track it.
+
+```bash
+sudo -u postgres psql -XAt -d cexplorer -c "
+  SELECT to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD HH24:MI:SS') || ' UTC',
+         block_no, slot_no, time
+  FROM public.block
+  WHERE block_no IS NOT NULL
+  ORDER BY id DESC
+  LIMIT 1;"
+
+sudo -u cardano /opt/cardano-node/11.0.1/bin/cardano-cli query tip \
+  --socket-path /run/cardano-node/node.socket --testnet-magic 1
+```
+
+Use `sudo journalctl -u cardano-node -u cardano-db-sync --since '10 minutes ago' --no-pager` to distinguish relay replay, schema initialization, and a restart loop. Keep the EC2 host running while the services catch up.
+
+## Bootstrap observations
+
+- The Mithril snapshot producer used a newer Cardano release. The restore used certified immutable blocks and the pinned relay replayed its local ledger before opening the Unix socket.
+- Binding the relay to loopback produced outbound peer connection errors. The runbook uses the documented IPv4 wildcard binding with the lab's ingress closed at the security group. Changing the bind required a restart, and the relay replayed the ledger again because its ledger snapshot directory was empty.
+- To check the network path separately from Cardano's peer state, run `timeout 8 bash -c 'exec 3<>/dev/tcp/preprod-node.play.dev.cardano.org/3001'`. An established Cardano peer and an advancing live relay tip provide the relay-level check.
+
+## Live PreProd evidence
+
+On 16 November 2026 the data volume was formatted as ext4 and mounted at `/srv/midnight` by filesystem UUID. PostgreSQL reported version `17.12`, data directory `/srv/midnight/postgresql/17/main`, and TCP listen address `127.0.0.1`.
+
+The relay bootstrapped from verified Mithril snapshot digest `edab42a1e9ad419fcc37d27c43d55387d4bf55a7b0f1fc36eb24abe7fb949c9c`. After the relay bind correction and restart, these two readings came from the newest indexed row in PostgreSQL `cexplorer.public.block`.
+
+| Observation time (UTC) | Indexed block height | Indexed slot | Indexed block time (UTC) |
+|---|---:|---:|---|
+| 2026-11-16 17:21:17 | 180,603 | 10,731,434 | 2022-10-22 04:57:14 |
+| 2026-11-16 17:21:47 | 205,336 | 11,236,113 | 2022-10-28 01:08:33 |
+
+The indexed height advanced by 24,733 blocks in 30 seconds. At handoff the Cardano relay reported `100.00` sync progress at block 5,419,979, with 27 established peer connections. The relay, PostgreSQL, and DB Sync were active under systemd and continued replaying the historical backlog.
+
+After the nine near-tip migrations completed, PostgreSQL matched the live Cardano relay at both readings.
+
+| Observation time (UTC) | Relay and PostgreSQL height | Slot | Matching block hash |
+|---|---:|---:|---|
+| 2026-11-16 22:35:43 | 5,420,843 | 139,185,333 | `0ded87ec3deb9ef7340fee3f9923c7bfd9d2fb14e292f94490c4ef56e1658c8f` |
+| 2026-11-16 22:36:43 | 5,420,848 | 139,185,392 | `aacf622be6aa0351ea763f9ef750246fe08fba4a2092749d02fe17d41fae2716` |
+
+[AWS EBS volume mapping](https://docs.aws.amazon.com/ebs/latest/userguide/identify-nvme-ebs-device.html) · [Midnight relay setup](https://docs.midnight.network/nodes/cardano-node) · [Midnight DB Sync setup](https://docs.midnight.network/nodes/cardano-db-sync) · [Mithril bootstrap](https://mithril.network/doc/manual/getting-started/bootstrap-cardano-node/)
+
+## Prepare Midnight's PostgreSQL connection
+
+Verify Cardano DB Sync is tracking the live Cardano relay before starting Midnight. Create a dedicated `midnight_reader` login with `CONNECT` to `cexplorer`, `USAGE` on `public`, and `SELECT` on its tables. Set its default transaction mode to read-only. Generate the password on the host and keep the DSN in `/etc/midnight/midnight-node.env`, owned by root with mode `0600`.
+
+Issue a local PostgreSQL server certificate with an IP subject alternative name for `127.0.0.1`. Place its private key in the PostgreSQL configuration directory, owned by `postgres` with mode `0600`, and install the public CA certificate at `/etc/midnight/postgres-ca.crt`. Add a TLS configuration drop-in and the `hostssl cexplorer midnight_reader 127.0.0.1/32 scram-sha-256` HBA entry. Preserve the existing `dbsync` rule. The PostgreSQL bootstrap regenerates the HBA file, so restore the reader entry before reloading if the bootstrap is run again.
+
+Check `pg_file_settings` and `pg_hba_file_rules` for errors, then run `SELECT pg_reload_conf()` as the database administrator. Test the reader with `PGSSLMODE=verify-full`, `PGSSLROOTCERT=/etc/midnight/postgres-ca.crt`, and a temporary protected password file. Confirm the reader can select the Cardano tip over TLS and lacks write access. On this host, the reader connected with TLS 1.3 and PostgreSQL and DB Sync retained their original processes through the reload.
+
+The `2.1.101` candidate data source checks for three named indexes during startup. Its first startup failed when the read-only service tried to create the missing indexes. From a `psql -X -d cexplorer` session as `postgres`, run each statement separately with autocommit. `SET ROLE` limits the index changes to the existing table owner.
+
+```sql
+SET ROLE dbsync;
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ma_tx_out_ident ON public.ma_tx_out (ident);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tx_out_address ON public.tx_out USING hash (address);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ma_tx_out_id_ident ON public.ma_tx_out (tx_out_id, ident);
+```
+
+Check `pg_stat_progress_create_index` while they build. Before starting Midnight, check `pg_index.indisready` and `pg_index.indisvalid` and compare `pg_get_indexdef` against the expected definitions. The separate `idx_multi_asset_policy_name_hex` index is optional. A warning about it can be evaluated with the database owner while keeping the service login read-only.
+
+[Midnight candidate index setup](https://github.com/midnightntwrk/midnight-node/blob/node-2.1.101/primitives/mainchain-follower/src/data_source/candidates_data_source/mod.rs#L138-L147) · [PostgreSQL TLS configuration](https://www.postgresql.org/docs/17/ssl-tcp.html)
+
+## Start the Midnight PreProd archive node
+
+Download the official `midnight-node-2.1.101-linux-amd64.tar.gz` release. Verify it against the release SHA-256 `48ce9d44464117b4ee8c1194209ebbbc4ea7d1adc39a77edeef1d1aa2b3ffbb5`. Extract the binary and its bundled `res` directory into `/opt/midnight-node/2.1.101`. Create a `midnight-node` system account and give it ownership of `/srv/midnight/midnight-node` on the mounted data volume. [Midnight release](https://github.com/midnightntwrk/midnight-node/releases/tag/node-2.1.101)
+
+Set `/opt/midnight-node/2.1.101` as the working directory in `midnight-node.service` so the node can find `res/cfg/preprod.toml`. Set `User=midnight-node`, `EnvironmentFile=/etc/midnight/midnight-node.env`, `RequiresMountsFor=/srv/midnight`, and `ConditionPathIsMountPoint=/srv/midnight`. Order startup after PostgreSQL and DB Sync. Set `Restart=on-failure` and bind RPC to loopback with the following command and environment.
+
+```bash
+CFG_PRESET=preprod CARDANO_SECURITY_PARAMETER=2160 \
+SSL_ROOT_CERT=/etc/midnight/postgres-ca.crt \
+/opt/midnight-node/2.1.101/midnight-node \
+  --chain /opt/midnight-node/2.1.101/res/preprod/chain-spec-raw.json \
+  --base-path /srv/midnight/midnight-node \
+  --sync full --state-pruning archive --blocks-pruning archive \
+  --rpc-port 9944 --rpc-methods Safe \
+  --name midnight-preprod --pool-limit 35 --no-private-ip
+```
+
+Enable and start `midnight-node.service`. Check the current best and finalized heights using `chain_getBlockHash`, `chain_getFinalizedHead`, and `chain_getHeader` on `http://127.0.0.1:9944`. For the indexer start gate, require an advancing finalized height, `system_health` with peers and `isSyncing: false`, and a block hash that matches a recent finalized public PreProd block at the same height. Check that an older block and its historical runtime are available before starting the indexer. [Midnight full-node guide](https://docs.midnight.network/nodes/full-node) · [PreProd explorers](https://docs.midnight.network/relnotes/network#preprod)
+
+### Archive replay observations
+
+On 16 November 2026, PostgreSQL reported all three required indexes valid and ready. The archive service started, opened loopback RPC, and began replaying with peers. The following evidence records early archive replay from genesis.
+
+| Observation time (UTC) | Best height | Finalized height | Finalized block hash |
+|---|---:|---:|---|
+| 2026-11-16 23:03:31 | 6,112 | 5,972 | `0xd49fc69c955ab467e7a7fa542c4d24a61d37dafad42f645defc689cedbfebfa2` |
+| 2026-11-16 23:04:41 | 16,161 | 16,108 | `0x0c7449598f6c2d943a3f7b29ed0640829e266512c4b165c3d0d19f476bc998af` |
+| 2026-11-17 06:09:30 | 836,956 | 836,799 | `0x7a546dc2bcda78c812ecf4093e1cf9258b00f3ec25f23686a5e2fda94f92bd6b` |
+
+At the last observation the archive node still reported major sync with 13 peers and a peer target of 3,454,422. The indexer start gate requires the live Midnight tip comparison.

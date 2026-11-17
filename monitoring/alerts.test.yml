@@ -1,0 +1,144 @@
+rule_files:
+  - alerts.yml
+
+evaluation_interval: 30s
+
+tests:
+  - name: advancing block import and healthy peers
+    input_series:
+      - series: 'up{job="midnight-node",instance="127.0.0.1:9615"}'
+        values: '1+0x30'
+      - series: 'substrate_block_height{job="midnight-node",instance="127.0.0.1:9615",chain="midnight_preprod",status="best"}'
+        values: '1000+10x30'
+      - series: 'substrate_sub_libp2p_peers_count{job="midnight-node",instance="127.0.0.1:9615",chain="midnight_preprod"}'
+        values: '8+0x30'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: MidnightBlockImportStalled
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: MidnightPeerCountLow
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: MidnightTelemetryUnavailable
+        exp_alerts: []
+
+  - name: stalled import waits for scrape history and clears when height advances
+    input_series:
+      - series: 'up{job="midnight-node",instance="127.0.0.1:9615"}'
+        values: '1+0x30'
+      - series: 'substrate_block_height{job="midnight-node",instance="127.0.0.1:9615",chain="midnight_preprod",status="best"}'
+        values: '1000+0x22 1001+1x7'
+      - series: 'substrate_block_height{job="midnight-node",instance="127.0.0.1:9615",chain="midnight_preprod",status="finalized"}'
+        values: '900+1x30'
+      - series: 'substrate_sub_libp2p_peers_count{job="midnight-node",instance="127.0.0.1:9615",chain="midnight_preprod"}'
+        values: '8+0x30'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: MidnightBlockImportStalled
+        exp_alerts: []
+      - eval_time: 10m30s
+        alertname: MidnightBlockImportStalled
+        exp_alerts:
+          - exp_labels:
+              job: midnight-node
+              instance: "127.0.0.1:9615"
+              chain: midnight_preprod
+              status: best
+              severity: warning
+            exp_annotations:
+              summary: "Midnight PreProd block import has stalled"
+              description: "Best block height has not advanced. Compare with the public PreProd tip and inspect node logs, disk, and peers."
+      - eval_time: 11m30s
+        alertname: MidnightBlockImportStalled
+        exp_alerts: []
+
+  - name: a short peer dip is silent and a sustained dip fires and clears
+    input_series:
+      - series: 'up{job="midnight-node",instance="127.0.0.1:9615"}'
+        values: '1+0x34'
+      - series: 'substrate_block_height{job="midnight-node",instance="127.0.0.1:9615",chain="midnight_preprod",status="best"}'
+        values: '1000+10x34'
+      - series: 'substrate_sub_libp2p_peers_count{job="midnight-node",instance="127.0.0.1:9615",chain="midnight_preprod"}'
+        values: '8+0x3 2+0x7 8+0x3 2+0x11 8+0x6'
+    alert_rule_test:
+      - eval_time: 5m30s
+        alertname: MidnightPeerCountLow
+        exp_alerts: []
+      - eval_time: 12m30s
+        alertname: MidnightPeerCountLow
+        exp_alerts: []
+      - eval_time: 13m
+        alertname: MidnightPeerCountLow
+        exp_alerts:
+          - exp_labels:
+              job: midnight-node
+              instance: "127.0.0.1:9615"
+              chain: midnight_preprod
+              severity: warning
+            exp_annotations:
+              summary: "Midnight PreProd has fewer than three peers"
+              description: "Check bootnodes, peer discovery, and P2P connectivity."
+      - eval_time: 14m
+        alertname: MidnightPeerCountLow
+        exp_alerts: []
+
+  - name: scrape failure suppresses alerts on stale node signals
+    input_series:
+      - series: 'up{job="midnight-node",instance="127.0.0.1:9615"}'
+        values: '0+0x30'
+      - series: 'substrate_block_height{job="midnight-node",instance="127.0.0.1:9615",chain="midnight_preprod",status="best"}'
+        values: '1000+0x30'
+      - series: 'substrate_sub_libp2p_peers_count{job="midnight-node",instance="127.0.0.1:9615",chain="midnight_preprod"}'
+        values: '0+0x30'
+    alert_rule_test:
+      - eval_time: 1m30s
+        alertname: MidnightTelemetryUnavailable
+        exp_alerts: []
+      - eval_time: 2m
+        alertname: MidnightTelemetryUnavailable
+        exp_alerts: &telemetry_alert
+          - exp_labels:
+              job: midnight-node
+              instance: "127.0.0.1:9615"
+              severity: critical
+            exp_annotations:
+              summary: "Midnight PreProd telemetry is unavailable"
+              description: "Check the scrape target, midnight-node.service, and the expected metrics at 127.0.0.1:9615."
+      - eval_time: 15m
+        alertname: MidnightBlockImportStalled
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: MidnightPeerCountLow
+        exp_alerts: []
+
+  - name: successful scrape lacks the best block height
+    input_series:
+      - series: 'up{job="midnight-node",instance="127.0.0.1:9615"}'
+        values: '1+0x4'
+      - series: 'substrate_block_height{job="midnight-node",instance="127.0.0.1:9615",chain="midnight_preprod",status="finalized"}'
+        values: '1000+1x4'
+      - series: 'substrate_sub_libp2p_peers_count{job="midnight-node",instance="127.0.0.1:9615",chain="midnight_preprod"}'
+        values: '8+0x4'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: MidnightTelemetryUnavailable
+        exp_alerts: *telemetry_alert
+
+  - name: successful scrape lacks the peer count
+    input_series:
+      - series: 'up{job="midnight-node",instance="127.0.0.1:9615"}'
+        values: '1+0x4'
+      - series: 'substrate_block_height{job="midnight-node",instance="127.0.0.1:9615",chain="midnight_preprod",status="best"}'
+        values: '1000+1x4'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: MidnightTelemetryUnavailable
+        exp_alerts: *telemetry_alert
+
+  - name: target is missing
+    input_series: []
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: MidnightTelemetryUnavailable
+        exp_alerts: *telemetry_alert
