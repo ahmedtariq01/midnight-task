@@ -200,5 +200,10 @@ At 06:59 UTC, Cardano relay and DB Sync matched at height 5,422,236 and hash `a5
 |---|---:|---:|---:|---:|---|
 | 2026-11-17 07:19:12 | 885,584 | 885,489 | 3,455,067 | 158,225 | Yes |
 | 2026-11-17 07:20:43 | 886,345 | 886,272 | 3,455,081 | 161,119 | Yes |
+| 2026-11-17 07:25:14 | 890,026 | 889,989 | 3,455,124 | 169,970 | Yes |
 
 At 07:19 UTC the archive checksum `0x95b053f4e0e4e01cac5ca825e45605f5aa1e3622ef236e8afe5c22f8a9902ea4` matched [public finalized block 885,489](https://midnight-preprod.subscan.io/block/885489). The indexer and archive checksum `0xa450a431b9e7a00a0545c075e971978e027cebfcbfc0e2df10372459cc65ad55` matched [public finalized block 158,225](https://midnight-preprod.subscan.io/block/158225). The [sampled public finalized tip](https://midnight-preprod.subscan.io/block/3455067) was 3,455,067. The archive reported 10 peers and `isSyncing=true`. The indexer returned `/live=200` and `/ready=503` in both samples. The 07:20 UTC Cardano probe reported a same-height hash match at 5,422,294.
+
+At 07:25 UTC the local archive hash `0x38c7c9d66995028646b9587c375e337cbb7b8a8d058d403b00e32252ceef2216` matched [public block 889,989](https://midnight-preprod.subscan.io/block/889989). The indexer hash `0x4ede69b5f9fb83b00a9c1865994f09996b9c33f16be13850b461586b1a2a185d` matched the local archive and [public block 169,970](https://midnight-preprod.subscan.io/block/169970). The archive still reported major sync and the indexer returned `/live=200` and `/ready=503`.
+
+Grafana loaded all four dashboards from file provisioning. The new Replay queries returned fresh heights, progress percentages, backlog drain rates, and peer count. The AWS dashboard returned EC2 CPU, status checks, network data, and data-volume operations, throughput, and queue depth. The volume-level IOPS and throughput exceeded checks returned no points in the verification window. Logs Insights returned a warning and error keyword series and 100 collected events in the latest-events panel.

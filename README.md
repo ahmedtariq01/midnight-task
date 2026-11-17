@@ -6,10 +6,12 @@ This project runs the Cardano dependencies, Midnight PreProd archive node, stand
 |---|---|---|
 | Cardano relay | `11.0.1` | PreProd relay tracked the live tip. |
 | Cardano DB Sync and PostgreSQL | `13.7.1.0` and `17` | Two PostgreSQL heights and hashes matched the Cardano relay after the near-tip migrations. |
-| Midnight archive node | `2.1.101` | At 07:20 UTC on 17 November it had finalized 886,272 blocks and was still replaying. An earlier finalized hash at 885,489 matched public PreProd. |
-| Midnight standalone indexer | `4.4.101` | At 07:20 UTC it had indexed 161,119 blocks and its hash matched the archive at that height. `/live` returned `200` and `/ready` returned `503` during replay. |
+| Midnight archive node | `2.1.101` | At 07:25 UTC on 17 November it had finalized 889,989 blocks. That block hash matched public PreProd. The archive was still replaying. |
+| Midnight standalone indexer | `4.4.101` | At 07:25 UTC it had indexed 169,970 blocks. Its hash matched the archive and public PreProd at that height. `/live` returned `200` and `/ready` returned `503` during replay. |
 
 The [runbook](RUNBOOK.md) records the bootstrap, database TLS setup, and timestamped verification. The [infrastructure guide](infra/README.md) documents the network, storage, Terraform outline, and CI. The [security notes](SECURITY.md) cover operator key custody, rotation, and incident response.
+
+The [prompts and outputs](prompts/README.md) show the main requests, response excerpts, and evidence for the decisions made during the assessment.
 
 ## PreProd data flow
 
@@ -135,7 +137,7 @@ python3 -m unittest discover -s scripts -p 'test_*.py' -v
 
 The [GitHub Actions workflow](.github/workflows/terraform.yml) checks formatting, validation, lint, security controls, Terraform assertions, Prometheus rules, and the health checker. PR validation uses the mocked PreProd plan shown in the Actions summary. The AWS apply path uses an approval-protected `preprod` environment and OIDC once the repository owner configures them.
 
-The [passing GitHub Actions run](https://github.com/ahmedtariq01/midnight-task/actions/runs/44030108980) records the mocked PreProd plan, Terraform checks, Prometheus rule tests, and health checker tests. The deployment job was skipped. The runbook records live progression and same-height hashes. Full PreProd verification remains in progress while the archive and indexer replay.
+The [passing GitHub Actions run](https://github.com/ahmedtariq01/midnight-task/actions/runs/44038328944) records the mocked PreProd plan, Terraform checks, Prometheus rule tests, and health checker tests. The deployment job was skipped. The runbook records live progression and same-height hashes. Full PreProd verification remains in progress while the archive and indexer replay.
 
 ## What I would do with more time
 
