@@ -17,6 +17,8 @@ The Prometheus configuration targets the node on `127.0.0.1:9615`. The [monitori
 
 On EC2, the Prometheus target reported `up=1` and all three alert rules had evaluation health `ok`. The offline rules test also exercises firing and recovery.
 
+The [Grafana setup](monitoring/grafana/README.md) provides direct HTTPS access to the PreProd Replay and Host and EBS dashboards from the operator network. Grafana queries the local Prometheus and the CloudWatch source for native EC2 metrics and selected service logs.
+
 | Signal | Why it matters | Operator response |
 |---|---|---|
 | Block height stops advancing | The process can remain up while it stops importing blocks. | Check best and finalized heights, peers, node logs, and whether Cardano DB Sync is current. |

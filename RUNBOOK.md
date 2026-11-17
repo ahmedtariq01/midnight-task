@@ -2,7 +2,7 @@
 
 ## AWS host and access
 
-Use the [EC2 Terraform configuration](infra/ec2/README.md) for the Ubuntu 24.04 x86-64 host and its separate 500 GiB EBS volume. Open the host through **EC2 → Connect → In web browser → SSM Session Manager**. The host uses an outbound-only security group.
+Use the [EC2 Terraform configuration](infra/ec2/README.md) for the Ubuntu 24.04 x86-64 host and its separate 500 GiB EBS volume. Open the host through **EC2 → Connect → In web browser → SSM Session Manager**. Grafana's ingress is limited to the operator HTTPS rule and the ACME challenge endpoint.
 
 ## Prepare persistent data storage
 
@@ -24,7 +24,7 @@ sudo bash cardano-relay.sh
 ```
 
 - PostgreSQL 17 uses its signed PGDG packages and a cluster at `/srv/midnight/postgresql/17/main`. It listens on loopback and the local Unix socket. The `cexplorer` database is owned by the dedicated `dbsync` database role. Its generated local authentication file is `/etc/midnight/dbsync.pgpass` with mode `0600`.
-- Cardano node and CLI `11.0.1` use the release's PreProd configuration and network magic `1`. The bootstrap verifies the Mithril snapshot certificate chain and immutable chain files. It restores the certified blocks and lets the pinned Cardano release rebuild its ledger locally. Relay data goes to `/srv/midnight/cardano/db`, and the socket is `/run/cardano-node/node.socket`. The relay binds to `0.0.0.0:3001` inside the guest, with zero inbound rules on the EC2 security group.
+- Cardano node and CLI `11.0.1` use the release's PreProd configuration and network magic `1`. The bootstrap verifies the Mithril snapshot certificate chain and immutable chain files. It restores the certified blocks and lets the pinned Cardano release rebuild its ledger locally. Relay data goes to `/srv/midnight/cardano/db`, and the socket is `/run/cardano-node/node.socket`. The relay binds to `0.0.0.0:3001` inside the guest. The EC2 security group blocks inbound access to port `3001`.
 
 After PostgreSQL accepts the local DB Sync connection and the relay starts, run the DB Sync stage.
 
@@ -180,3 +180,16 @@ Deploy the [monitoring configuration](monitoring/README.md) with the verified Pr
 - At 06:23:47 UTC Prometheus reported `up=1` for `127.0.0.1:9615`. The stall, low-peer, and telemetry alerts all evaluated with health `ok` and state `inactive`.
 - The [health checker](scripts/README.md) reported `syncing` with an empty issue array at 06:23:48 UTC. Best height advanced 487 and finalized height advanced 270 since the preceding observation.
 - At 06:23:48 UTC Cardano DB Sync still matched the Cardano relay at height 5,422,132, slot 139,213,426, and hash `27d21811f2454d4f1e71624f3831910ff26e3d19f659d26031df9eb55e7bc4ca`.
+
+## Direct Grafana access and CloudWatch
+
+On 17 November 2026, Grafana `13.3.1` was deployed behind Nginx on the same EC2 host. The direct HTTPS health endpoint returned `database: ok` from the operator network. An anonymous request to `/api/user` returned `401`, and the HTTP `/login` path returned `404`. The Grafana backend, Prometheus, and Node Exporter were confirmed on loopback. The Let's Encrypt IP certificate renewal dry run passed and executed the Nginx reload hook. See the [Grafana guide](monitoring/grafana/README.md) for sign-in and queries.
+
+Both provisioned dashboards loaded. The `midnight-node` and `node` Prometheus targets returned `up=1`, and the indexer hash probe returned `1`. Grafana queried native EC2 CPU metrics and the `/midnight/preprod/host` CloudWatch log group successfully. The log group received an indexer stream verification event and retains events for seven days.
+
+| Replay observation (UTC) | Midnight finalized height | Indexer height | Indexer hash matches node |
+|---|---:|---:|---|
+| 2026-11-17 06:43:43 | 862,894 | 76,684 | Yes |
+| 2026-11-17 06:58:59 | 877,689 | 115,170 | Yes |
+
+At 06:59 UTC, Cardano relay and DB Sync matched at height 5,422,236 and hash `a5b57c5325300591a078cd25d6969a629e18d4eba9b87bdce41b2b086c50ec65`. Both Midnight services continued replaying. The indexer returned `/live=200` and `/ready=503`, and the data volume had 348 GiB free.

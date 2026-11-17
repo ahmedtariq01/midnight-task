@@ -2,6 +2,8 @@
 
 Prometheus scrapes the node's native metrics at `127.0.0.1:9615/metrics` every 30 seconds. The rules use the `midnight_preprod` chain label seen on the EC2 node. The archive node follows PreProd and imports blocks, so best block height is the progress signal during replay and after catch-up. Finalized height and the sync target help explain a stall.
 
+Node Exporter on `127.0.0.1:9100` adds host metrics and reads `midnight-replay.prom` from its textfile collector. A systemd timer executes the read-only [replay probes](probes/replay_metrics.py) every 30 seconds. The probes report Cardano and indexer heights, same-height hash agreement, and sample freshness. The [Grafana guide](grafana/README.md) describes the provisioned dashboards and direct HTTPS access.
+
 ## Alerts
 
 | Alert | Why it fires | Operator response |

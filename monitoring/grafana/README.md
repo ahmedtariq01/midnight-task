@@ -1,6 +1,10 @@
 # Grafana for PreProd
 
-Grafana uses the existing Prometheus service. Run Grafana on the EC2 host network so provisioned queries reach `http://127.0.0.1:9090`. Bind the Grafana UI to `127.0.0.1:3000` with `GF_SERVER_HTTP_ADDR=127.0.0.1` and use Session Manager port forwarding to open it. Keep Grafana's writable data directory persistent.
+Grafana uses the existing Prometheus service. Run Grafana on the EC2 host network so provisioned queries reach `http://127.0.0.1:9090`. Bind Grafana to `127.0.0.1:3000` on the host with `GF_SERVER_HTTP_ADDR=127.0.0.1`. The browser opens the EC2 public IPv4 address over HTTPS through Nginx. Set `GF_SERVER_ROOT_URL` to that address, pass the forwarded HTTPS scheme and WebSocket headers, enable secure cookies, and keep Grafana's writable data on the mounted EBS volume.
+
+The EC2 ingress rules allow HTTPS from the operator's IPv4 `/32` and HTTP for ACME validation. Nginx serves only `/.well-known/acme-challenge/` on HTTP and returns `404` for all other HTTP paths. Certbot uses the short-lived IP certificate profile and reloads Nginx via its deployment hook. The HTTPS port and the renewal dry run were verified from the live deployment.
+
+Sign in as `admin`. Grafana reads the generated password from a protected file at startup. The operator retrieves it in their Session Manager terminal with `sudo cat /etc/midnight/grafana/secrets/admin-password`. Grafana account sign-up and anonymous access are disabled.
 
 | Directory | Container mount |
 | --- | --- |
@@ -24,9 +28,11 @@ The test suite in the [monitoring guide](../README.md) covers the three existing
 
 To inspect more host metrics, import [Node Exporter Full](https://grafana.com/grafana/dashboards/1860-node-exporter-full/) by dashboard ID `1860` and select **PreProd Prometheus** as its data source. Its default job is `node`.
 
-## Optional CloudWatch
+## CloudWatch
 
 Mount [the CloudWatch data source](optional/cloudwatch.yml) as an additional file at `/etc/grafana/provisioning/datasources/cloudwatch.yml` when the running Grafana service has an approved AWS role with the required read permissions. The file uses the AWS SDK credential chain in `us-east-2`. In Explore use the existing `AWS/EBS` volume metrics, `AWS/EC2` instance metrics, or the `/midnight/preprod/host` log group after log collection is active.
+
+The live source returned both `AWS/EC2` CPU metrics and Logs Insights results. Use **Explore → PreProd CloudWatch → Logs**, select the host log group, and choose a short time window. The CloudWatch agent ships selected service journal events with seven-day retention. A separate journal reader follows the already running indexer container using `docker logs --follow`.
 
 Use **Maximum** over the selected window for the volume and instance IOPS and throughput exceeded checks. Correlate with host disk latency, queue depth, and lower replay speed before attributing a slowdown to EBS limits.
 

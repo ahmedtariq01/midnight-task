@@ -22,7 +22,7 @@ flowchart LR
     end
 ```
 
-The security group permits outbound traffic for peer connections, downloads, and Session Manager. PostgreSQL `5432`, Midnight RPC `9944`, metrics `9615`, and indexer GraphQL `8088` are local services. The live host uses a separate mounted EBS volume for persistent data. It connects to public PreProd peers and establishes operator access through Session Manager.
+The security group permits outbound traffic for peer connections, downloads, and Session Manager. PostgreSQL `5432`, Midnight RPC `9944`, metrics `9615`, and indexer GraphQL `8088` are local services. The live host uses a separate mounted EBS volume for persistent data. It connects to public PreProd peers and establishes shell access through Session Manager. The optional live Grafana endpoint uses Nginx HTTPS with an operator IP allowlist. [Grafana access](../monitoring/grafana/README.md)
 
 ## Local verification
 
