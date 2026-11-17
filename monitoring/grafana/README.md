@@ -11,18 +11,21 @@ Sign in as `admin`. Grafana reads the generated password from a protected file a
 | `monitoring/grafana/provisioning` | `/etc/grafana/provisioning`, read-only |
 | `monitoring/grafana/dashboards` | `/var/lib/grafana/dashboards`, read-only |
 
-The **PreProd** folder is populated on startup.
+Grafana loads the **PreProd** folder at startup and checks its provisioned dashboard directory every 30 seconds.
 
-- **PreProd Replay** (`preprod-replay`) shows the archive, indexer, and Cardano sync paths. It uses native Midnight metrics from the `midnight-node` job and numeric health probes from the `node` job. The probe panels that compare heights and hashes require a successful reading from the last three minutes. The archive's peer target measures local replay progress. Indexer readiness and hash agreement refer to the local archive.
+- **PreProd Replay** (`preprod-replay`) shows current best, finalized, indexed and peer-target heights, gaps and percentages, replay and backlog drain rates, connected peers, Cardano tip agreement, and probe freshness. The archive percentage uses the peer-reported target. The indexer percentage uses local finality. Both denominators move as new blocks arrive. The probe panels that compare heights and hashes require a successful reading from the last three minutes.
 - **PreProd Host and EBS** (`preprod-host-ebs`) uses Node Exporter on the `node` job. Check single-core versus mean CPU load, memory pressure, and storage latency and queue depth alongside replay rates. Use `findmnt -no SOURCE /srv/midnight` on the host to identify which NVMe series belongs to the data volume.
+- **PreProd AWS EC2 and EBS** (`preprod-aws`) uses native CloudWatch CPU, status check, network, EBS operations, bytes, queue depth, and limit-check metrics. The EC2 and EBS IDs are text variables. Replace `__PREPROD_INSTANCE_ID__` and `__PREPROD_DATA_VOLUME_ID__` in the deployed copy or enter them in the dashboard controls. Absent limit-check points leave a gap. The dashboard refreshes every five minutes.
+- **PreProd Service Logs** (`preprod-service-logs`) queries `/midnight/preprod/host`. It shows warning and error keywords by service and the latest 100 selected events. It uses a 30-minute window and manual refresh to limit repeated Logs Insights scans. Widen the window for services that log less frequently.
 
 The test suite in the [monitoring guide](../README.md) covers the three existing Prometheus alerts. Use Grafana's Alerting view to inspect the rules and Explore to query the underlying metrics.
 
 ## Verify after deployment
 
-1. Confirm Grafana `/api/health` reports database status `ok`. Sign in and open **Dashboards → PreProd** to see both provisioned dashboards.
+1. Confirm Grafana `/api/health` reports database status `ok`. Sign in and open **Dashboards → PreProd** to see the four provisioned dashboards when CloudWatch is configured.
 2. In Explore query `up{job=~"midnight-node|node"}`. Both targets should report `1`. Query `midnight_ops_probe_success{job="node"}` and check that the Replay dashboard shows recent probe ages for Cardano and the indexer.
-3. Check that archive heights, indexer height, and NVMe IOPS render as time series. Compare the timestamp with current replay activity. A live indexer can show **Catching up** while it replays history.
+3. Check that archive heights, indexer height, and NVMe IOPS render as time series. Compare the timestamp with current replay activity. A live indexer can return HTTP `503` from `/ready` while it replays history.
+4. Confirm the AWS dashboard has EC2 CPU and data-volume I/O points, and the service logs dashboard returns a recent event. Only selected journal events are shipped, so some streams may have no events in a short window.
 
 ## Extra Node Exporter panels
 

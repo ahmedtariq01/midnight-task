@@ -1,0 +1,154 @@
+{
+  "id": null,
+  "uid": "preprod-service-logs",
+  "title": "PreProd Service Logs",
+  "tags": [
+    "preprod",
+    "cloudwatch",
+    "logs"
+  ],
+  "description": "Selected PreProd journal events shipped to CloudWatch Logs in Ohio.",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "timezone": "utc",
+  "refresh": "",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "links": [
+    {
+      "title": "Replay",
+      "type": "link",
+      "url": "/d/preprod-replay",
+      "keepTime": true,
+      "targetBlank": false
+    },
+    {
+      "title": "AWS EC2 and EBS",
+      "type": "link",
+      "url": "/d/preprod-aws",
+      "keepTime": true,
+      "targetBlank": false
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Warning and error keywords by service",
+      "description": "Counts collected journal messages with warning, error, failure, panic, or fatal keywords in five-minute buckets. Quiet periods have no matching rows.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "preprod-cloudwatch"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "preprod-cloudwatch"
+          },
+          "queryMode": "Logs",
+          "queryLanguage": "CWLI",
+          "region": "us-east-2",
+          "logsQueryScope": "logGroupName",
+          "logGroupNames": [
+            "/midnight/preprod/host"
+          ],
+          "expression": "filter @logStream in [\"cardano-node\", \"cardano-db-sync\", \"midnight-node\", \"midnight-indexer\", \"postgresql\"]\n| parse @message /(?i)(?<event_level>\\b(?:warning|warn|error|failed|panic|fatal)\\b)/\n| filter ispresent(event_level)\n| fields tolower(event_level) as severity\n| stats count(*) as events by bin(5m), @logStream, severity",
+          "statsGroups": [
+            "@logStream",
+            "severity"
+          ],
+          "refId": "A",
+          "id": "m1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Latest 100 collected service events",
+      "description": "Shows selected CloudWatch journal events from Cardano, DB Sync, PostgreSQL, the Midnight node, and the indexer. Choose a short time range before refreshing to limit scanned data.",
+      "type": "logs",
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 24,
+        "h": 16
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "preprod-cloudwatch"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "preprod-cloudwatch"
+          },
+          "queryMode": "Logs",
+          "queryLanguage": "CWLI",
+          "region": "us-east-2",
+          "logsQueryScope": "logGroupName",
+          "logGroupNames": [
+            "/midnight/preprod/host"
+          ],
+          "expression": "fields @timestamp, @logStream, @message\n| filter @logStream in [\"cardano-node\", \"cardano-db-sync\", \"midnight-node\", \"midnight-indexer\", \"postgresql\"]\n| sort @timestamp desc\n| limit 100",
+          "refId": "A",
+          "id": "m1"
+        }
+      ],
+      "options": {
+        "sortOrder": "Descending",
+        "showTime": true,
+        "enableLogDetails": true,
+        "wrapLogMessage": true
+      }
+    }
+  ]
+}

@@ -193,3 +193,12 @@ Both provisioned dashboards loaded. The `midnight-node` and `node` Prometheus ta
 | 2026-11-17 06:58:59 | 877,689 | 115,170 | Yes |
 
 At 06:59 UTC, Cardano relay and DB Sync matched at height 5,422,236 and hash `a5b57c5325300591a078cd25d6969a629e18d4eba9b87bdce41b2b086c50ec65`. Both Midnight services continued replaying. The indexer returned `/live=200` and `/ready=503`, and the data volume had 348 GiB free.
+
+### Repeat replay and public hash check
+
+| Observation (UTC) | Archive best | Archive finalized | Peer target | Indexed height | Same-height archive and indexer hash match |
+|---|---:|---:|---:|---:|---|
+| 2026-11-17 07:19:12 | 885,584 | 885,489 | 3,455,067 | 158,225 | Yes |
+| 2026-11-17 07:20:43 | 886,345 | 886,272 | 3,455,081 | 161,119 | Yes |
+
+At 07:19 UTC the archive checksum `0x95b053f4e0e4e01cac5ca825e45605f5aa1e3622ef236e8afe5c22f8a9902ea4` matched [public finalized block 885,489](https://midnight-preprod.subscan.io/block/885489). The indexer and archive checksum `0xa450a431b9e7a00a0545c075e971978e027cebfcbfc0e2df10372459cc65ad55` matched [public finalized block 158,225](https://midnight-preprod.subscan.io/block/158225). The [sampled public finalized tip](https://midnight-preprod.subscan.io/block/3455067) was 3,455,067. The archive reported 10 peers and `isSyncing=true`. The indexer returned `/live=200` and `/ready=503` in both samples. The 07:20 UTC Cardano probe reported a same-height hash match at 5,422,294.

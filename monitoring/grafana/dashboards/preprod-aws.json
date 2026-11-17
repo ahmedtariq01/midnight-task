@@ -1,0 +1,729 @@
+{
+  "id": null,
+  "uid": "preprod-aws",
+  "title": "PreProd AWS EC2 and EBS",
+  "tags": [
+    "preprod",
+    "cloudwatch",
+    "ec2",
+    "ebs"
+  ],
+  "description": "Native CloudWatch metrics for the Ohio instance and its mounted data volume.",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "timezone": "utc",
+  "refresh": "5m",
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "instance_id",
+        "label": "EC2 instance ID",
+        "type": "textbox",
+        "query": "__PREPROD_INSTANCE_ID__",
+        "current": {
+          "selected": false,
+          "text": "__PREPROD_INSTANCE_ID__",
+          "value": "__PREPROD_INSTANCE_ID__"
+        }
+      },
+      {
+        "name": "data_volume_id",
+        "label": "Data EBS volume ID",
+        "type": "textbox",
+        "query": "__PREPROD_DATA_VOLUME_ID__",
+        "current": {
+          "selected": false,
+          "text": "__PREPROD_DATA_VOLUME_ID__",
+          "value": "__PREPROD_DATA_VOLUME_ID__"
+        }
+      }
+    ]
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "links": [
+    {
+      "title": "Replay",
+      "type": "link",
+      "url": "/d/preprod-replay",
+      "keepTime": true,
+      "targetBlank": false
+    },
+    {
+      "title": "Host and EBS",
+      "type": "link",
+      "url": "/d/preprod-host-ebs",
+      "keepTime": true,
+      "targetBlank": false
+    },
+    {
+      "title": "Service logs",
+      "type": "link",
+      "url": "/d/preprod-service-logs",
+      "keepTime": true,
+      "targetBlank": false
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "title": "EC2 CPU utilization",
+      "description": "Average and peak instance utilization over each five-minute period.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "preprod-cloudwatch"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "preprod-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "region": "us-east-2",
+          "namespace": "AWS/EC2",
+          "metricName": "CPUUtilization",
+          "dimensions": {
+            "InstanceId": [
+              "$instance_id"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Average",
+          "period": "300",
+          "label": "Average",
+          "refId": "A",
+          "id": "m1"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "preprod-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "region": "us-east-2",
+          "namespace": "AWS/EC2",
+          "metricName": "CPUUtilization",
+          "dimensions": {
+            "InstanceId": [
+              "$instance_id"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "300",
+          "label": "Maximum",
+          "refId": "B",
+          "id": "m2"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "EC2 status check failures",
+      "description": "A maximum of 1 identifies a failed instance or system check within that five-minute period.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "preprod-cloudwatch"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "preprod-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "region": "us-east-2",
+          "namespace": "AWS/EC2",
+          "metricName": "StatusCheckFailed_Instance",
+          "dimensions": {
+            "InstanceId": [
+              "$instance_id"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "300",
+          "label": "Instance",
+          "refId": "A",
+          "id": "m1"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "preprod-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "region": "us-east-2",
+          "namespace": "AWS/EC2",
+          "metricName": "StatusCheckFailed_System",
+          "dimensions": {
+            "InstanceId": [
+              "$instance_id"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "300",
+          "label": "System",
+          "refId": "B",
+          "id": "m2"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "EC2 network bytes per five minutes",
+      "description": "Bytes received and sent in each five-minute period.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "preprod-cloudwatch"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "preprod-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "region": "us-east-2",
+          "namespace": "AWS/EC2",
+          "metricName": "NetworkIn",
+          "dimensions": {
+            "InstanceId": [
+              "$instance_id"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Sum",
+          "period": "300",
+          "label": "Received",
+          "refId": "A",
+          "id": "m1"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "preprod-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "region": "us-east-2",
+          "namespace": "AWS/EC2",
+          "metricName": "NetworkOut",
+          "dimensions": {
+            "InstanceId": [
+              "$instance_id"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Sum",
+          "period": "300",
+          "label": "Sent",
+          "refId": "B",
+          "id": "m2"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Data volume queue length",
+      "description": "Average pending read and write requests on the mounted EBS data volume.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "preprod-cloudwatch"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "preprod-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "region": "us-east-2",
+          "namespace": "AWS/EBS",
+          "metricName": "VolumeQueueLength",
+          "dimensions": {
+            "VolumeId": [
+              "$data_volume_id"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Average",
+          "period": "60",
+          "label": "Pending I/O",
+          "refId": "A",
+          "id": "m1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Data volume operations per minute",
+      "description": "Completed read and write operations summed over each one-minute period.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "preprod-cloudwatch"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "preprod-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "region": "us-east-2",
+          "namespace": "AWS/EBS",
+          "metricName": "VolumeReadOps",
+          "dimensions": {
+            "VolumeId": [
+              "$data_volume_id"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Sum",
+          "period": "60",
+          "label": "Read",
+          "refId": "A",
+          "id": "m1"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "preprod-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "region": "us-east-2",
+          "namespace": "AWS/EBS",
+          "metricName": "VolumeWriteOps",
+          "dimensions": {
+            "VolumeId": [
+              "$data_volume_id"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Sum",
+          "period": "60",
+          "label": "Write",
+          "refId": "B",
+          "id": "m2"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Data volume bytes per minute",
+      "description": "Bytes read and written over each one-minute period.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "preprod-cloudwatch"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "preprod-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "region": "us-east-2",
+          "namespace": "AWS/EBS",
+          "metricName": "VolumeReadBytes",
+          "dimensions": {
+            "VolumeId": [
+              "$data_volume_id"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Sum",
+          "period": "60",
+          "label": "Read",
+          "refId": "A",
+          "id": "m1"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "preprod-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "region": "us-east-2",
+          "namespace": "AWS/EBS",
+          "metricName": "VolumeWriteBytes",
+          "dimensions": {
+            "VolumeId": [
+              "$data_volume_id"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Sum",
+          "period": "60",
+          "label": "Write",
+          "refId": "B",
+          "id": "m2"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Data volume limit checks",
+      "description": "A maximum of 1 means the data volume exceeded its provisioned IOPS or throughput during the period.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "preprod-cloudwatch"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "preprod-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "region": "us-east-2",
+          "namespace": "AWS/EBS",
+          "metricName": "VolumeIOPSExceededCheck",
+          "dimensions": {
+            "VolumeId": [
+              "$data_volume_id"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "300",
+          "label": "Volume IOPS",
+          "refId": "A",
+          "id": "m1"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "preprod-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "region": "us-east-2",
+          "namespace": "AWS/EBS",
+          "metricName": "VolumeThroughputExceededCheck",
+          "dimensions": {
+            "VolumeId": [
+              "$data_volume_id"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "300",
+          "label": "Volume throughput",
+          "refId": "B",
+          "id": "m2"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "title": "EC2 EBS limit checks",
+      "description": "A maximum of 1 means the instance exceeded its aggregate EBS IOPS or throughput limit during the period.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "preprod-cloudwatch"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "preprod-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "region": "us-east-2",
+          "namespace": "AWS/EC2",
+          "metricName": "InstanceEBSIOPSExceededCheck",
+          "dimensions": {
+            "InstanceId": [
+              "$instance_id"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "300",
+          "label": "Instance EBS IOPS",
+          "refId": "A",
+          "id": "m1"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "preprod-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "region": "us-east-2",
+          "namespace": "AWS/EC2",
+          "metricName": "InstanceEBSThroughputExceededCheck",
+          "dimensions": {
+            "InstanceId": [
+              "$instance_id"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "300",
+          "label": "Instance EBS throughput",
+          "refId": "B",
+          "id": "m2"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    }
+  ]
+}
