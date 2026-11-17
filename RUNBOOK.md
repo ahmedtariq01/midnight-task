@@ -121,7 +121,7 @@ SSL_ROOT_CERT=/etc/midnight/postgres-ca.crt \
   --name midnight-preprod --pool-limit 35 --no-private-ip
 ```
 
-Enable and start `midnight-node.service`. Check the current best and finalized heights using `chain_getBlockHash`, `chain_getFinalizedHead`, and `chain_getHeader` on `http://127.0.0.1:9944`. For the indexer start gate, require an advancing finalized height, `system_health` with peers and `isSyncing: false`, and a block hash that matches a recent finalized public PreProd block at the same height. Check that an older block and its historical runtime are available before starting the indexer. [Midnight full-node guide](https://docs.midnight.network/nodes/full-node) · [PreProd explorers](https://docs.midnight.network/relnotes/network#preprod)
+Enable and start `midnight-node.service`. Check the current best and finalized heights using `chain_getBlockHash`, `chain_getFinalizedHead`, and `chain_getHeader` on `http://127.0.0.1:9944`. For live-tip verification, require an advancing finalized height, `system_health` with peers and `isSyncing: false`, and a block hash that matches a recent finalized public PreProd block at the same height. Check that an older block and its historical runtime are available before starting the indexer. [Midnight full-node guide](https://docs.midnight.network/nodes/full-node) · [PreProd explorers](https://docs.midnight.network/relnotes/network#preprod)
 
 ### Archive replay observations
 
@@ -133,4 +133,50 @@ On 16 November 2026, PostgreSQL reported all three required indexes valid and re
 | 2026-11-16 23:04:41 | 16,161 | 16,108 | `0x0c7449598f6c2d943a3f7b29ed0640829e266512c4b165c3d0d19f476bc998af` |
 | 2026-11-17 06:09:30 | 836,956 | 836,799 | `0x7a546dc2bcda78c812ecf4093e1cf9258b00f3ec25f23686a5e2fda94f92bd6b` |
 
-At the last observation the archive node still reported major sync with 13 peers and a peer target of 3,454,422. The indexer start gate requires the live Midnight tip comparison.
+At 06:09 UTC the archive node reported major sync with 13 peers and a peer target of 3,454,422.
+
+## Start the standalone Midnight indexer
+
+For this lab, the indexer started during archive replay to overlap the two workloads. First verify the PreProd genesis hash `0xdf831b09a8baa92badf47762ce5ac439b7e47e3ed3d39600cfdd44fad552361b` and confirm both `chain_getBlock` and `state_getRuntimeVersion` return data for an older block. The archive returned bodies and runtime state for genesis and block 1,000 at 06:18 UTC. The indexer replays the node's finalized history, then follows new finalized blocks. Its `/ready` endpoint measures progress against its local archive node. Use the public same-height hash check in the previous section to establish live PreProd catch-up. [Indexer release](https://github.com/midnightntwrk/midnight-indexer/releases/tag/v4.4.101) · [Replay implementation](https://github.com/midnightntwrk/midnight-indexer/blob/v4.4.101/chain-indexer/src/infra/subxt_node.rs#L392-L527)
+
+1. Install Ubuntu's `docker.io` package and enable `docker.service`. Verify `/srv/midnight` is mounted. Create `/srv/midnight/midnight-indexer` owned by `10001:10001` with mode `0750`. The bind mount at `/data` persists both SQLite databases.
+2. Generate a stable 32-byte hex encryption key at `/etc/midnight/indexer/secret`. Use a root-owned parent directory, UID `10001` for the file, and mode `0400`. Mount this file read-only. Keep the same key with the indexer data through service restarts.
+3. Create the container using the pinned image and environment. Host networking lets it connect to the node's loopback RPC on Linux. Explicitly bind the GraphQL listener to loopback. The dummy Blockfrost setting is for this lab's block indexing, and a real SPO integration needs a separate review of credentials and logging.
+
+```bash
+docker create --name midnight-indexer --network host \
+  --cap-drop ALL --security-opt no-new-privileges \
+  --cpu-shares 256 --memory-reservation 6g \
+  --log-driver json-file --log-opt max-size=20m --log-opt max-file=3 \
+  --mount type=bind,src=/srv/midnight/midnight-indexer,dst=/data \
+  --mount type=bind,src=/etc/midnight/indexer/secret,dst=/run/secrets/indexer_secret,readonly \
+  -e APP__INFRA__SECRET_FILE=/run/secrets/indexer_secret \
+  -e APP__APPLICATION__NETWORK_ID=preprod \
+  -e APP__INFRA__NODE__URL=ws://127.0.0.1:9944 \
+  -e APP__INFRA__SPO_NODE__URL=ws://127.0.0.1:9944 \
+  -e APP__INFRA__SPO_NODE__BLOCKFROST_ID=dummy-not-using-spo \
+  -e APP__INFRA__API__ADDRESS=127.0.0.1 \
+  -e APP__INFRA__API__PORT=8088 \
+  midnightntwrk/indexer-standalone:4.4.101@sha256:119f35db548ba1c390845f215bb1e928e73038bef7c315825aee0461bd54499d
+```
+
+4. Enable `midnight-indexer.service` with `Requires=` and `After=` for Docker and the archive node, `RequiresMountsFor=/srv/midnight`, and `ConditionPathIsMountPoint=/srv/midnight`. Set `ExecStart=/usr/bin/docker start --attach midnight-indexer`, `ExecStop=/usr/bin/docker stop --time 45 midnight-indexer`, and `Restart=always`. The first indexer process stopped during a container runtime restart. It resumed and the API was live on loopback afterward.
+
+### Indexer and archive evidence
+
+Query `{ block { height hash timestamp protocolVersion } }` at `http://127.0.0.1:8088/api/v4/graphql`. Use `chain_getBlockHash` on the archive node with the indexed block height. The table shows two advancing GraphQL samples whose hashes matched the archive RPC, ignoring the `0x` prefix. [Indexer GraphQL API](https://github.com/midnightntwrk/midnight-indexer/blob/v4.4.101/docs/api/v4/api-documentation.md)
+
+| Observation time (UTC) | Indexer height | GraphQL and archive RPC matching hash | Archive finalized height |
+|---|---:|---|---:|
+| 2026-11-17 06:21:51 | 2,792 | `acd1c889d858c457874d5ac25c00bf868eb76f2fea28c2225c6881f50986550d` | 845,402 |
+| 2026-11-17 06:23:12 | 7,580 | `e01df2ca60a87a82967411268fd9ad74af09b27cda63f6bbbf2191b2999e1061` | 846,336 |
+
+The archive finalized hashes at those heights were `0xd50fa8e7b5ae8498bf2585af3215e2bb63c073c6a55bd32197c8dfc76f9d7b79` and `0x6a03a1d67f157f138c6c6e63741af4fdb5f8691822d6103dca95c5f2e3898844`, respectively. `/live` returned `200` and `/ready` returned `503` in both samples. At 06:23 UTC the archive peer target was 3,454,549. The archive and indexer were still replaying. On final catch-up, compare a fresh public Midnight PreProd finalized hash against the archive at the same height and repeat the GraphQL checks with `/ready` returning `200`.
+
+## Verify monitoring and the health checker
+
+Deploy the [monitoring configuration](monitoring/README.md) with the verified Prometheus image `prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06`. The live container uses Linux host networking, binds `127.0.0.1:9090`, and stores limited-retention data at `/srv/midnight/prometheus`. Mount `prometheus.yml` and `alerts.yml` read-only.
+
+- At 06:23:47 UTC Prometheus reported `up=1` for `127.0.0.1:9615`. The stall, low-peer, and telemetry alerts all evaluated with health `ok` and state `inactive`.
+- The [health checker](scripts/README.md) reported `syncing` with an empty issue array at 06:23:48 UTC. Best height advanced 487 and finalized height advanced 270 since the preceding observation.
+- At 06:23:48 UTC Cardano DB Sync still matched the Cardano relay at height 5,422,132, slot 139,213,426, and hash `27d21811f2454d4f1e71624f3831910ff26e3d19f659d26031df9eb55e7bc4ca`.

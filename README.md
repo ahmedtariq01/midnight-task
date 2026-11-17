@@ -1,13 +1,13 @@
 # Midnight PreProd DevOps take-home
 
-This project runs the Cardano dependencies and a Midnight PreProd archive node on a single On-Demand EC2 instance in Ohio. The lab exercises validator onboarding operations using a public archive node. Validator registration on PreProd requires operator access from the network team.
+This project runs the Cardano dependencies, Midnight PreProd archive node, standalone indexer, and Prometheus on a single On-Demand EC2 instance in Ohio. The lab exercises validator onboarding operations using a public archive node. Validator registration on PreProd requires operator access from the network team.
 
 | Component | Version | Evidence |
 |---|---|---|
 | Cardano relay | `11.0.1` | PreProd relay tracked the live tip. |
 | Cardano DB Sync and PostgreSQL | `13.7.1.0` and `17` | Two PostgreSQL heights and hashes matched the Cardano relay after the near-tip migrations. |
-| Midnight archive node | `2.1.101` | The service connected to PreProd peers and is advancing through historical blocks. |
-| Midnight standalone indexer | `4.4.101` | Planned launch after archive catch-up is verified against PreProd. |
+| Midnight archive node | `2.1.101` | The service connected to PreProd peers and is advancing through historical blocks. At 06:23 UTC on 17 November it had finalized 846,336. |
+| Midnight standalone indexer | `4.4.101` | The live API returned advancing indexed heights and two hashes matched the archive RPC at the same heights. `/ready` returned `503` during replay. |
 
 The [runbook](RUNBOOK.md) records the bootstrap, database TLS setup, and timestamped verification. The [infrastructure guide](infra/README.md) documents the network, storage, Terraform outline, and CI. The [security notes](SECURITY.md) cover operator key custody, rotation, and incident response.
 
@@ -15,7 +15,7 @@ The [runbook](RUNBOOK.md) records the bootstrap, database TLS setup, and timesta
 
 The Prometheus configuration targets the node on `127.0.0.1:9615`. The [monitoring guide](monitoring/README.md) explains the alert durations and checks. The alert choices reflect what an engineer can investigate directly on this host.
 
-The live node exposed the expected height and peer gauges. Prometheus configuration and alert tests passed locally. On-host Prometheus evaluation is pending.
+On EC2, the Prometheus target reported `up=1` and all three alert rules had evaluation health `ok`. The offline rules test also exercises firing and recovery.
 
 | Signal | Why it matters | Operator response |
 |---|---|---|
@@ -32,6 +32,8 @@ promtool test rules monitoring/alerts.test.yml
 
 Option C polls the node RPC, writes a structured report, and compares it with the previous observation. See the [health checker guide](scripts/README.md) for options and report fields. The RPC is bound to loopback, so run a live check on the EC2 host through Session Manager.
 
+Two live health samples reported expected sync progress. The second reported no active issues and a 487-block increase in best height.
+
 ```bash
 python3 scripts/node_health.py --rpc-url http://127.0.0.1:9944 \
   --interval 30 --output var/midnight-health.json
@@ -42,4 +44,4 @@ python3 -m unittest discover -s scripts -p 'test_*.py' -v
 
 The [GitHub Actions workflow](.github/workflows/terraform.yml) checks formatting, validation, lint, security controls, Terraform assertions, Prometheus rules, and the health checker. PR validation uses the mocked PreProd plan shown in the Actions summary. The AWS apply path uses an approval-protected `preprod` environment and OIDC once the repository owner configures them.
 
-The [passing GitHub Actions run](https://github.com/ahmedtariq01/midnight-task/actions/runs/44029739744) records the mocked PreProd plan, Terraform checks, Prometheus rule tests, and health checker tests. The deployment job was skipped. The runbook records live node progression. Live indexer readiness and hash checks depend on the archive reaching the Midnight PreProd tip.
+The [passing GitHub Actions run](https://github.com/ahmedtariq01/midnight-task/actions/runs/44030108980) records the mocked PreProd plan, Terraform checks, Prometheus rule tests, and health checker tests. The deployment job was skipped. The runbook records live progression and same-height hashes. Full PreProd verification remains in progress while the archive and indexer replay.

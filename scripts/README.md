@@ -74,4 +74,4 @@ Run the tests with mocked RPC responses and temporary report files.
 python3 -m unittest discover -s scripts -p 'test_*.py' -v
 ```
 
-Live validation on the assessment node is pending.
+Two live observations on the assessment node reported `syncing`. The second showed an advancing best and finalized height with an empty issue array. [Runbook evidence](../RUNBOOK.md#verify-monitoring-and-the-health-checker)
