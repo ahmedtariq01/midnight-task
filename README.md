@@ -6,7 +6,7 @@ A single On-Demand EC2 host in AWS Ohio runs Cardano PreProd, Cardano DB Sync, P
 
 | Section | What was delivered | Evidence |
 |---|---|---|
-| 1. PreProd onboarding | Cardano DB Sync caught up first. The Midnight archive and standalone indexer then advanced through history with timestamped height and hash checks. | [Deployment runbook](RUNBOOK.md) |
+| 1. PreProd onboarding | Deployed Cardano DB Sync, the Midnight archive, and the standalone indexer. Verified block heights and same-height hashes. | [Deployment runbook](RUNBOOK.md) |
 | 2. Monitoring and alerts | Prometheus and Node Exporter collect chain and host metrics. Three tested alert rules and four Grafana dashboards cover replay, host resources, AWS metrics, and service logs. | [Monitoring configuration](monitoring/README.md) · [Grafana dashboards](#grafana-dashboards) |
 | 3. Scripting, Option C | A Python health checker polls Midnight RPC at a configurable interval, writes JSON, and reports regressions and recoveries against the previous observation. | [Script and tests](scripts/README.md) |
 | 4. Key management | A written plan covers operator key custody, HSM and KMS support, Secrets Manager trade-offs, rotation, and the first three actions after suspected compromise. | [Security plan](SECURITY.md) |
@@ -32,10 +32,6 @@ Grafana reads Prometheus for local metrics and CloudWatch for native EC2 and EBS
 
 ## Grafana dashboards
 
-![Live PreProd Replay dashboard capture with sync state, readiness, hash agreement, heights, and replay trends](docs/grafana/preprod-replay.jpg)
-
-*Captured during PreProd replay on 17 November 2026. The hash check compares the indexer with the archive at the same height.*
-
 | Dashboard | What to look for | Provisioned definition |
 |---|---|---|
 | **PreProd Replay** | Best, finalized, indexed, and target heights. Replay rate, backlog drain, hash agreement, readiness, and Cardano DB Sync freshness. | [Replay JSON](monitoring/grafana/dashboards/preprod-replay.json) |
@@ -55,25 +51,16 @@ Operators can open all four from the **PreProd** folder over the allowlisted HTT
 
 All three rules evaluated successfully on EC2. Their firing and recovery behaviour is covered by [Prometheus rule tests](monitoring/alerts.test.yml).
 
-## Verification and scope
+## Verification
 
-- **Cardano** matched the relay's block height and hash at **5,422,294** in the 07:20 UTC check on 17 November 2026.
-- **Midnight** was still replaying at **07:25 UTC**. The archive finalized **889,989** against a peer target of **3,455,124**. The indexer had reached **169,970** and returned HTTP `200` on `/live` and `503` on `/ready`. The archive and indexer hashes each matched public PreProd at their sampled heights.
-- **Observability** was tested with real Prometheus metrics, native CloudWatch EC2 and EBS datapoints, and a Logs Insights panel that returned 100 collected events. The two volume-level exceeded-check metrics returned no datapoints in the verification window.
+- **Chain data.** Compared PostgreSQL block heights and hashes with the Cardano relay. Checked the Midnight archive and indexer hashes against public PreProd at the same heights.
+- **Observability.** Verified Prometheus scrapes, native EC2 and EBS metrics, and CloudWatch service logs through Grafana.
 
-The [runbook records the timestamped samples and hashes](RUNBOOK.md#repeat-replay-and-public-hash-check).
+See the [deployment verification evidence](RUNBOOK.md#repeat-replay-and-public-hash-check).
 
 ## CI and submission evidence
 
 CI passed Terraform validation, lint, security checks, mock plan tests, Prometheus rule tests, and health checker tests. Terraform provisioned the live EC2 lab from its own root. The CloudWatch log group and scoped role policy were created separately and are documented for later Terraform import. The reusable stack workflow's approval-gated AWS apply was skipped. [Live Terraform state notes](infra/ec2/README.md#deployment-and-terraform-review) · [Workflow](.github/workflows/terraform.yml) · [Passing run](https://github.com/ahmedtariq01/midnight-task/actions/runs/44038869277)
-
-## Assumptions and trade-offs
-
-One host and an On-Demand instance kept the assessment deployment simple and allowed both chains to keep working through the replay window. The indexer started during archive replay after historical RPC checks. Its readiness is relative to the local archive. The Terraform outline documents the stricter startup dependencies for a new environment.
-
-## What I would do with more time
-
-Rehearse restoring a verified DB Sync backup and measuring restart-to-tip time. Run monitoring from a second host so an EC2 outage can still trigger an alert. Test an isolated signer and its key-rotation and recovery procedures before registering a validator. [Production and recovery notes](infra/README.md#rebuild-and-production-changes)
 
 ## References
 

@@ -20,6 +20,8 @@ Grafana loads the **PreProd** folder at startup and checks its provisioned dashb
 
 The test suite in the [monitoring guide](../README.md) covers the three existing Prometheus alerts. Use Grafana's Alerting view to inspect the rules and Explore to query the underlying metrics.
 
+[Preview the PreProd Replay dashboard layout](../../docs/grafana/preprod-replay.jpg).
+
 ## Verify after deployment
 
 1. Confirm Grafana `/api/health` reports database status `ok`. Sign in and open **Dashboards → PreProd** to see the four provisioned dashboards when CloudWatch is configured.
