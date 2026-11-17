@@ -13,7 +13,9 @@ The [runbook](RUNBOOK.md) records the bootstrap, database TLS setup, and timesta
 
 ## Monitoring
 
-Prometheus scrapes the node on `127.0.0.1:9615`. The [monitoring guide](monitoring/README.md) explains the alert durations and checks. The alert choices reflect what an engineer can investigate directly on this host.
+The Prometheus configuration targets the node on `127.0.0.1:9615`. The [monitoring guide](monitoring/README.md) explains the alert durations and checks. The alert choices reflect what an engineer can investigate directly on this host.
+
+The live node exposed the expected height and peer gauges. Prometheus configuration and alert tests passed locally. On-host Prometheus evaluation is pending.
 
 | Signal | Why it matters | Operator response |
 |---|---|---|
@@ -40,4 +42,4 @@ python3 -m unittest discover -s scripts -p 'test_*.py' -v
 
 The [GitHub Actions workflow](.github/workflows/terraform.yml) checks formatting, validation, lint, security controls, Terraform assertions, Prometheus rules, and the health checker. PR validation uses the mocked PreProd plan shown in the Actions summary. The AWS apply path uses an approval-protected `preprod` environment and OIDC once the repository owner configures them.
 
-The [workflow history](https://github.com/ahmedtariq01/midnight-task/actions/workflows/terraform.yml) records the GitHub checks. Final live evidence will include the archive hash comparison, the indexer's readiness status, and two advancing indexer heights checked against the node at the same heights.
+The [passing GitHub Actions run](https://github.com/ahmedtariq01/midnight-task/actions/runs/44029739744) records the mocked PreProd plan, Terraform checks, Prometheus rule tests, and health checker tests. The deployment job was skipped. The runbook records live node progression. Live indexer readiness and hash checks depend on the archive reaching the Midnight PreProd tip.
