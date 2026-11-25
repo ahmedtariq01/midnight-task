@@ -41,6 +41,8 @@ Grafana reads Prometheus for local metrics and CloudWatch for native EC2 and EBS
 
 Operators can open all four from the **PreProd** folder over the allowlisted HTTPS endpoint. The [Grafana guide](monitoring/grafana/README.md) covers provisioning, data sources, and verification.
 
+The monitoring and logging report is in `monitoring/grafana/preprod-monitoring-and-logging.pdf`.
+
 ### Prometheus alerts
 
 | Alert | Why it matters | Operator response |
